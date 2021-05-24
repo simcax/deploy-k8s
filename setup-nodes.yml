@@ -1,0 +1,21 @@
+- hosts: k8s-nodes
+  remote_user: "{{ user }}"
+  vars: 
+    src_dir: "{{ playbook_dir }}"
+    mode: u=rwx
+  vars_files:
+    - "{{ src_dir }}/conf/k8s-config.yml"
+  tasks:
+    - name: Microk8s - enable dns, dashboard, storage, rbac, ingress, registry
+      command: microk8s enable dns dashboard storage rbac ingress registry
+    - name: Get join command from Master Node
+      shell: microk8s add-node|sed - -n -e 2,2p
+      delegate_to: 10.0.0.5
+      register: results
+    - set_fact:
+        myvalue: "{{ results }}"
+    - debug:
+        var: myvalue
+    - name: Add node 
+      shell: "{{ myvalue.stdout }}"
+    

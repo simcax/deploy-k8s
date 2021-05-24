@@ -1,0 +1,15 @@
+- hosts: kubeMaster
+  remote_user: "{{ user }}"
+  become: yes
+  vars: 
+    src_dir: "{{ playbook_dir }}"
+    mode: u=rwx
+  vars_files:
+    - "{{ src_dir }}/conf/k8s-config.yml"
+  tasks:
+  - name: apt update
+    apt:
+      update_cache: yes
+  - name: Upgrade the OS (apt-get dist-upgrade)
+    apt:
+      upgrade: dist

@@ -1,0 +1,54 @@
+- hosts: kubeMaster
+  remote_user: "{{ user }}"
+  become: yes
+  vars: 
+    src_dir: "{{ playbook_dir }}"
+    mode: u=rwx
+  vars_files:
+    - "{{ src_dir }}/conf/k8s-config.yml"
+  tasks:
+    - replace:
+        dest: /boot/firmware/cmdline.txt
+        regexp: '^(dwc_otg.lpm_enable=0(?!.*\b{{ cgroup_options }}\b).*)$'
+        replace: '\1 {{ cgroup_options }}'
+    - name: Download docker install script
+      get_url: 
+        url: https://get.docker.com 
+        dest: "{{ remote_home_dir }}/get-docker.sh"
+        mode: '0755'
+    - name: Run docker install script
+      command: "sh {{ remote_home_dir }}/get-docker.sh"
+      args:
+        creates: /usr/bin/docker
+      register: docker_install
+    - user:
+        name: kubeMaster
+        comment: "K8s user"
+        groups: sudo,docker
+    - name: copy daemon.json to /etc/docker
+      copy:
+        src: files/daemon.json
+        dest: /etc/docker/daemon.json
+    - name: Enable routing
+      lineinfile: 
+        path: /etc/sysctl.conf
+        regexp: '^#net.ipv4.ip_forward=1'
+        line: net.ipv4.ip_forward=1
+    - name: Reboot
+      reboot:
+      when: docker_install.changed
+    - name: Run hello-world container
+      command: docker run hello-world
+    - name: Install Kubernetes from Snap
+      snap:
+        name: microk8s
+        classic: yes
+    - name: add user to microk8s
+      user:
+        name: ubuntu
+        group: microk8s
+        append: yes
+
+
+        
+
